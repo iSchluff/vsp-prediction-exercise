@@ -11,7 +11,7 @@ from videolib import yuvVideo
 width = 1920;
 height = 1088;
 numInvalids = 16;
-predictionType = "planar" # select from "planar", "dc", "vertical", "horizontal"
+predictionType = "dc" # select from "plane", "dc", "vertical", "horizontal"
 
 # read yuv file (only luminance is loaded)
 video = yuvVideo('Dancer_1920x1088.yuv', width, height)
@@ -49,16 +49,18 @@ predImageHEVC   = predImage
 predImageAVC    = predImage
 
 for j in range(numInvalids * 2):
-    area = invalidBlocks[j]
-    #x      = invalidBlocks[j, 0]
-    #y      = invalidBlocks[j, 1]
-    #size   = invalidBlocks[j, 2]
+    area = Block(
+        y = invalidBlocks[j, 0],
+        x = invalidBlocks[j, 1],
+        size = invalidBlocks[j, 2],
+        data = None
+    )
 
     # first, fill holes by AVC planar prediction
     predImageAVC = predAVC(predImageAVC, area, predictionType)
 
     # next, fill holes by HEVC planar prediction
-    predImageHEVC = predHEVC(predImageHEVC, area, predictionType)
+    # predImageHEVC = predHEVC(predImageHEVC, area, predictionType)
 
 # TODO: compute difference image between original and predicted images
 # diffAVC =
