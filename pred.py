@@ -55,8 +55,8 @@ def predictBlocks(blocks, predictionFunc):
     for bY in range(1, len(blocks)):
         for bX in range(1, len(blocks[bY])):
             # get reference blocks
-            tBlock = blocks[bY][bX - 1]
-            lBlock = blocks[bY - 1][bX]
+            tBlock = blocks[bY - 1][bX]
+            lBlock = blocks[bY][bX - 1]
 
             # predict block
             block = blocks[bY][bX]
