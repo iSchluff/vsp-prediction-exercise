@@ -3,23 +3,64 @@ from collections import namedtuple
 
 Block = namedtuple("Block", ["x", "y", "size", "data"])
 
-def dcPred(block, top, left):
-    leftPixels = left.data[0 : left.size, -1]
-    topPixels = top.data[-1, 0: top.size]
-    dc = (np.mean(leftPixels) + np.mean(topPixels)) / 2
+def dcPred264(block, top, left):
+    if left.data.size == 0 or top.data.size == 0:
+        return
+
+    dc = (np.mean(left.data[0 : left.size, -1]) +
+          np.mean(top.data[-1, 0: top.size])) / 2.0
     block.data[:, :] = dc
 
-def planePred(block, top, left):
+# top row and left column are handled differently in the h.265 case
+def dcPred265(block, top, left):
+    if left.data.size == 0 or top.data.size == 0:
+        return
+
+    dc = (np.mean(left.data[0 : left.size, -1]) +
+          np.mean(top.data[-1, 0: top.size])) / 2.0
+
+    block.data[0, 0] = (2 * dc + top.data[-1, 0] + left.data[0, -1]) / 4.0
+    block.data[1:, 0] = (3 * dc + left.data[1:, -1]) / 4.0
+    block.data[0, 1:] = (3 * dc + top.data[-1, 1:]) / 4.0
+    block.data[1:, 1:] = dc
+
+
+def planePred264(block, top, left):
     pass
+
+def planarPred265(block, top, left, topRight=None, bottomLeft=None):
+    if left.data.size == 0 or top.data.size == 0:
+        return
+
+    bs = block.size
+
+    # determine a,d references
+    if bottomLeft is not None:
+        refA = bottomLeft.data[0, -1]
+    else:
+        refA = left.data[-1, -1]
+
+    if topRight is not None:
+        refD = topRight.data[-1, 0]
+    else:
+        refD = top.data[-1, -1]
+
+    for y in range(bs):
+        for x in range(bs):
+            refB = left.data[y, -1]
+            refC = top.data[-1, x]
+            block.data[y, x] = (y + 1) / (2.0*bs) * refA + \
+                               (bs - 1 - x) / (2.0*bs) * refB + \
+                               (bs - 1 - y) / (2.0*bs) * refC + \
+                               (x + 1) / (2.0*bs) * refD
 
 def verticalPred(block, top, left):
-    pass
+    if top.data.size > 0:
+        block.data[:, :] = top.data[-1, 0: top.size]
 
 def horizontalPred(block, top, left):
-    pass
-
-predict = {"dc": dcPred, "plane": planePred,
-           "vertical": verticalPred, "horizontal": horizontalPred}
+    if left.data.size > 0:
+        block.data[:, :] = np.matrix(left.data[0 : left.size, -1]).T
 
 # divide area into prediction blocks
 def getBlocks(image, area, blockSize):
@@ -31,8 +72,8 @@ def getBlocks(image, area, blockSize):
     prevX, prevY = alignedX - blockSize, alignedY - blockSize
 
     # get prediction blockcounts
-    countX = np.ceil((area.x - prevX + area.size) / blockSize)
-    countY = np.ceil((area.y - prevY + area.size) / blockSize)
+    countX = np.ceil((area.x - prevX + area.size * 2) / blockSize)
+    countY = np.ceil((area.y - prevY + area.size * 2) / blockSize)
 
     # create prediction blocks
     blocks = []
@@ -52,14 +93,15 @@ def getBlocks(image, area, blockSize):
 # predict blocks in order from top-left to bottom-right
 def predictBlocks(blocks, predictionFunc):
     # don't predict the first row/column, they are references
-    for bY in range(1, len(blocks)):
-        for bX in range(1, len(blocks[bY])):
+    for bY in range(1, len(blocks) - 1):
+        for bX in range(1, len(blocks[bY]) - 1):
+            # prediction block
+            block = blocks[bY][bX]
+
             # get reference blocks
             tBlock = blocks[bY - 1][bX]
             lBlock = blocks[bY][bX - 1]
 
-            # predict block
-            block = blocks[bY][bX]
             predictionFunc(block, tBlock, lBlock)
 
 # fill in invalidated areas with AVC prediction
@@ -74,9 +116,11 @@ def predAVC(image, area, predictionType):
     # subdivide area into 4x4 prediction blocks
     # or 16x16 macroblocks?
     # (plane-mode is normally only applicable for 16x16)
-    blocks = getBlocks(image, area, 4)
+    blocks = getBlocks(image, area, 16)
 
     # predict blocks with selected predictionType
+    predict = {"dc": dcPred264, "plane": planePred264,
+               "vertical": verticalPred, "horizontal": horizontalPred}
     predictBlocks(blocks, predict[predictionType])
 
     return image
@@ -96,5 +140,7 @@ def predHEVC(image, area, predictionType):
     blocks = getBlocks(image, area, 16)
 
     # predict blocks with selected predictionType
+    predict = {"dc": dcPred265, "plane": planarPred265,
+               "vertical": verticalPred, "horizontal": horizontalPred}
     predictBlocks(blocks, predict[predictionType])
     return image
