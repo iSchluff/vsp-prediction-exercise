@@ -1,3 +1,4 @@
+import math
 import numpy as np
 from collections import namedtuple
 
@@ -7,8 +8,8 @@ def dcPred264(block, top, left):
     if left.data.size == 0 or top.data.size == 0:
         return
 
-    dc = (np.mean(left.data[0 : left.size, -1]) +
-          np.mean(top.data[-1, 0: top.size])) / 2.0
+    dc = (np.mean(left.data[:, -1]) +
+          np.mean(top.data[-1, :])) / 2.0
     block.data[:, :] = dc
 
 # top row and left column are handled differently in the h.265 case
@@ -16,8 +17,8 @@ def dcPred265(block, top, left):
     if left.data.size == 0 or top.data.size == 0:
         return
 
-    dc = (np.mean(left.data[0 : left.size, -1]) +
-          np.mean(top.data[-1, 0: top.size])) / 2.0
+    dc = (np.mean(left.data[:, -1]) +
+          np.mean(top.data[-1, :])) / 2.0
 
     block.data[0, 0] = (2 * dc + top.data[-1, 0] + left.data[0, -1]) / 4.0
     block.data[1:, 0] = (3 * dc + left.data[1:, -1]) / 4.0
@@ -31,12 +32,10 @@ def planePred264(block, top, left):
 	    return
 
     if top.data.size > 0 and left.data.size > 0:
-	    TL = 42
-	    leftPixels = left.data[:, -1].astype(int)
-	    topPixels = top.data[-1, :].astype(int)
+	    leftPixels = left.data[:, -1].astype("int")
+	    topPixels = top.data[-1, :].astype("int")
 	    H = 0
 	    for i in range(1, 9):
-	        print "A", 7+i, 8-i, topPixels
 	        A = i*(topPixels[7+i]-topPixels[8-i])
 	        H = H + A
 	    V = 0
@@ -44,10 +43,10 @@ def planePred264(block, top, left):
 	        A = i*(topPixels[7+i]-topPixels[8-i])
 	        V = V + A
 
-	
+
 	    H = (5*H + 32) / 64
 	    V = (5*V + 32) / 64
-	
+
 	    a = 16 * (leftPixels[15] + topPixels[15] + 1) - 7*(V+H)
 	    for i in range(16):
 	        for j in range(16):
@@ -82,11 +81,11 @@ def planarPred265(block, top, left, topRight=None, bottomLeft=None):
 
 def verticalPred(block, top, left):
     if top.data.size > 0:
-        block.data[:, :] = top.data[-1, 0: top.size]
+        block.data[:, :] = top.data[-1, :]
 
 def horizontalPred(block, top, left):
     if left.data.size > 0:
-        block.data[:, :] = np.matrix(left.data[0 : left.size, -1]).T
+        block.data[:, :] = np.matrix(left.data[:, -1]).T
 
 # divide area into prediction blocks
 def getBlocks(image, area, blockSize):
@@ -131,7 +130,7 @@ def predictBlocks(blocks, predictionFunc):
             predictionFunc(block, tBlock, lBlock)
 
 # fill in invalidated areas with AVC prediction
-def predAVC(image, area, predictionType):
+def predAVC(image, area, predictionType, blockSize):
     # reject invalid areas
     if (area.x < 0 or area.y < 0 or
         area.y + area.size > image.shape[0] or
@@ -141,8 +140,8 @@ def predAVC(image, area, predictionType):
 
     # subdivide area into 4x4 prediction blocks
     # or 16x16 macroblocks?
-    # (plane-mode is normally only applicable for 16x16)
-    blocks = getBlocks(image, area, 16)
+    # (plane-mode is only applicable for 16x16)
+    blocks = getBlocks(image, area, blockSize)
 
     # predict blocks with selected predictionType
     predict = {"dc": dcPred264, "plane": planePred264,
@@ -152,7 +151,7 @@ def predAVC(image, area, predictionType):
     return image
 
 # fill in invalidated areas with HEVC prediction
-def predHEVC(image, area, predictionType):
+def predHEVC(image, area, predictionType, blockSize):
     # same as AVC but with other blocksizes??
 
     # reject invalid areas
@@ -162,8 +161,8 @@ def predHEVC(image, area, predictionType):
         print "ignoring area", area.x, area.y, area.size
         return image
 
-    # subdivide area into 16x16 prediction blocks
-    blocks = getBlocks(image, area, 16)
+    # subdivide area into 4x4 - 64x64 prediction blocks
+    blocks = getBlocks(image, area, blockSize)
 
     # predict blocks with selected predictionType
     predict = {"dc": dcPred265, "plane": planarPred265,

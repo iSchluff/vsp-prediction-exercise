@@ -8,10 +8,11 @@ from pred import *
 from videolib import yuvVideo
 
 # definition of variables
-width = 1920;
-height = 1088;
-numInvalids = 16;
-predictionType = "plane" # select from "plane", "dc", "vertical", "horizontal"
+width = 1920
+height = 1088
+numInvalids = 16
+blockSize = 16
+predictionType = "dc" # select from "plane", "dc", "vertical", "horizontal"
 
 # read yuv file (only luminance is loaded)
 video = yuvVideo('Dancer_1920x1088.yuv', width, height)
@@ -52,14 +53,12 @@ for j in range(numInvalids * 2):
     )
 
     # fill holes by AVC/HEVC prediction
-    predImageAVC = predAVC(predImageAVC, area, predictionType)
-    predImageHEVC = predHEVC(predImageHEVC, area, predictionType)
+    predImageAVC = predAVC(predImageAVC, area, predictionType, blockSize)
+    predImageHEVC = predHEVC(predImageHEVC, area, predictionType, blockSize)
 
-# TODO: compute difference image between original and predicted images
-# diffAVC =
-diffAVC=np.subtract(origImage,predImageAVC)
-cv2.imshow('AVC Diff', diffAVC)
-# diffHEVC =
+# compute difference image between original and predicted images
+cv2.imshow('AVC Diff', np.subtract(origImage, predImageAVC))
+cv2.imshow('HEVC Diff', np.subtract(origImage, predImageHEVC))
 
 # the 'Mean Squared Error' between the two images is the
 # sum of the squared difference between the two images;
@@ -68,8 +67,9 @@ def mse(imageA, imageB):
 	err /= float(imageA.shape[0] * imageA.shape[1])
 	return err
 
-PSNR_AVC = np.log10(255**2 / mse(origImage, predImageAVC))
-PSNR_HEVC = np.log10(255**2 / mse(origImage, predImageHEVC))
+# compute PSNR
+PSNR_AVC = 10 * np.log10(255**2 / mse(origImage, predImageAVC))
+PSNR_HEVC = 10 * np.log10(255**2 / mse(origImage, predImageHEVC))
 print 'PSNR AVC:', PSNR_AVC
 print 'PSNR HEVC:', PSNR_HEVC
 
