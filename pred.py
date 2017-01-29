@@ -26,7 +26,33 @@ def dcPred265(block, top, left):
 
 
 def planePred264(block, top, left):
-    pass
+    if block.size != 16:
+	    print "h264 plane mode only works for 16x16 blocks"
+	    return
+
+    if top.data.size > 0 and left.data.size > 0:
+	    TL = 42
+	    leftPixels = left.data[:, -1].astype(int)
+	    topPixels = top.data[-1, :].astype(int)
+	    H = 0
+	    for i in range(1, 9):
+	        print "A", 7+i, 8-i, topPixels
+	        A = i*(topPixels[7+i]-topPixels[8-i])
+	        H = H + A
+	    V = 0
+	    for i in range(1, 9):
+	        A = i*(topPixels[7+i]-topPixels[8-i])
+	        V = V + A
+
+	
+	    H = (5*H + 32) / 64
+	    V = (5*V + 32) / 64
+	
+	    a = 16 * (leftPixels[15] + topPixels[15] + 1) - 7*(V+H)
+	    for i in range(16):
+	        for j in range(16):
+		    b = a + V * j + H * i
+		    block.data[i,j] = min(max(b/32, 0), 255)
 
 def planarPred265(block, top, left, topRight=None, bottomLeft=None):
     if left.data.size == 0 or top.data.size == 0:
