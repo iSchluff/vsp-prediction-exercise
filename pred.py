@@ -53,6 +53,29 @@ def planePred264(block, top, left):
 		    b = a + V * j + H * i
 		    block.data[i,j] = min(max(b/32, 0), 255)
 
+# Shorter version, doesn't work atm
+def planePred264_2(block, top, left):
+    if left.data.size == 0 or top.data.size == 0:
+        return
+
+    leftPixels = left.data[:, -1].astype("int")
+    topPixels = top.data[-1, :].astype("int")
+
+    bs = block.size
+    bsh = block.size / 2
+    print "foo", bs, bsh
+
+    H = np.sum(np.arange(1, bsh + 1) * (topPixels[bsh:] - top.data[:bsh][::-1]))
+    V = np.sum(np.arange(1, bsh + 1) * (leftPixels[bsh:] - left.data[:bsh][::-1]))
+
+    H = (5 * H + 32) / 64
+    V = (5 * V + 32) / 64
+    a = 16 * (leftPixels[-1] + topPixels[-1] + 1) - (bsh - 1) * (V + H)
+    for y in range(block.size):
+        for x in range(block.size):
+            b = a + V * y + H * x
+            block.data[y, x] = max(min(b / 32, 255), 0)
+
 def planarPred265(block, top, left, topRight=None, bottomLeft=None):
     if left.data.size == 0 or top.data.size == 0:
         return

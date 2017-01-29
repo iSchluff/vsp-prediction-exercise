@@ -12,7 +12,7 @@ width = 1920
 height = 1088
 numInvalids = 16
 blockSize = 16
-predictionType = "dc" # select from "plane", "dc", "vertical", "horizontal"
+predictionType = "plane" # select from "plane", "dc", "vertical", "horizontal"
 
 # read yuv file (only luminance is loaded)
 video = yuvVideo('Dancer_1920x1088.yuv', width, height)
@@ -32,9 +32,9 @@ for j in range(numInvalids*2):
     # invalidate block
     startY      = invalidBlocks[j, 0]
     startX      = invalidBlocks[j, 1]
-    blockSize   = invalidBlocks[j, 2]
-    endX        = startX + blockSize
-    endY        = startY + blockSize
+    size        = invalidBlocks[j, 2]
+    endX        = startX + size
+    endY        = startY + size
 
     predImage[startY:endY, startX:endX] = 0;
 
