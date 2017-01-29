@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 # Implement the HEVC and AVC planar intra prediction
 # for block sizes of 16x16 and 32x32 and compare
 # reconstruction results subjectively and objectively
@@ -11,7 +11,7 @@ from videolib import yuvVideo
 width = 1920;
 height = 1088;
 numInvalids = 16;
-predictionType = "dc" # select from "plane", "dc", "vertical", "horizontal"
+predictionType = "plane" # select from "plane", "dc", "vertical", "horizontal"
 
 # read yuv file (only luminance is loaded)
 video = yuvVideo('Dancer_1920x1088.yuv', width, height)
@@ -40,13 +40,8 @@ for j in range(numInvalids*2):
 # show image with holes to be filled by prediction
 cv2.imshow('original with empty blocks', predImage)
 
-# TODO: implement two functions predicting the invalidated parts
-# with 'AVC/HEVC Planar'. The functions should have the following headers:
-# function predImage = planarPredAVC(inputImage,posX,posY,blockSize)
-# and
-# function predImage = planarPredHEVC(inputImage,posX,posY,blockSize)
-predImageHEVC   = predImage
-predImageAVC    = predImage
+predImageHEVC   = predImage.copy()
+predImageAVC    = predImage.copy()
 
 for j in range(numInvalids * 2):
     area = Block(
@@ -56,33 +51,25 @@ for j in range(numInvalids * 2):
         data = None
     )
 
-    # first, fill holes by AVC planar prediction
+    # fill holes by AVC/HEVC prediction
     predImageAVC = predAVC(predImageAVC, area, predictionType)
-
-    # next, fill holes by HEVC planar prediction
-    # predImageHEVC = predHEVC(predImageHEVC, area, predictionType)
+    predImageHEVC = predHEVC(predImageHEVC, area, predictionType)
 
 # TODO: compute difference image between original and predicted images
 # diffAVC =
 # diffHEVC =
 
-# TODO: compute PSNR between original and predicted images
+# the 'Mean Squared Error' between the two images is the
+# sum of the squared difference between the two images;
 def mse(imageA, imageB):
-	# the 'Mean Squared Error' between the two images is the
-	# sum of the squared difference between the two images;
-	# NOTE: the two images must have the same dimension
 	err = np.sum((imageA.astype("float") - imageB.astype("float")) ** 2)
 	err /= float(imageA.shape[0] * imageA.shape[1])
-	
-	# return the MSE, the lower the error, the more "similar"
-	# the two images are
 	return err
-Dsse=mse(origImage,predImage)
-PSNR_AVC =np.log10((255**2/Dsse))
-print PSNR_AVC
 
-# PSNR_AVC =
-# PSNR_HEVC =
+PSNR_AVC = np.log10(255**2 / mse(origImage, predImageAVC))
+PSNR_HEVC = np.log10(255**2 / mse(origImage, predImageHEVC))
+print 'PSNR AVC:', PSNR_AVC
+print 'PSNR HEVC:', PSNR_HEVC
 
 # show final predicted images
 cv2.imshow('AVC image', predImageAVC)
