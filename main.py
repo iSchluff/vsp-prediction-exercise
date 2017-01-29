@@ -57,6 +57,8 @@ for j in range(numInvalids * 2):
 
 # TODO: compute difference image between original and predicted images
 # diffAVC =
+diffAVC=np.subtract(origImage,predImageAVC)
+cv2.imshow('AVC Diff', diffAVC)
 # diffHEVC =
 
 # the 'Mean Squared Error' between the two images is the
